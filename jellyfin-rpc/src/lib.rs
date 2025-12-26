@@ -256,7 +256,8 @@ impl Client {
 
                 // Discord requires activity name to be between 2-128 characters
                 if name.len() > 128 {
-                    name = name.chars().take(128).collect();
+                    // Truncate to 125 chars and add ellipsis (total 128)
+                    name = name.chars().take(125).collect::<String>() + "...";
                 } else if name.len() < 2 {
                     name = "Jellyfin".to_string();
                 }
