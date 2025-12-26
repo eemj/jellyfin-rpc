@@ -143,7 +143,7 @@ impl Client {
                 if let Ok(imgur_url) = external::imgur::get_image(self) {
                     image_url = imgur_url;
                 } else {
-                    debug!("imgur::get_image() didnt return an image, using default..")
+                    debug!("imgur::get_image() didn't return an image, using default..")
                 }
             } else if self.litterbox_options.enabled && self.show_images {
                 if let Ok(litterbox_url) = external::litterbox::get_image(self) {
@@ -155,7 +155,7 @@ impl Client {
                 if let Ok(iu) = self.get_image() {
                     image_url = iu;
                 } else {
-                    debug!("self.get_image() didnt return an image, using default..")
+                    debug!("self.get_image() didn't return an image, using default..")
                 }
             }
 
@@ -232,6 +232,40 @@ impl Client {
                 _ => activity = activity.activity_type(ActivityType::Watching),
             }
 
+            // Set activity name based on media type for proper Discord display
+            // Only set custom name if enabled in config, otherwise Discord shows default app name
+            let activity_name: Option<String> = if self.should_use_activity_name() {
+                let mut name = match session.now_playing_item.media_type {
+                    MediaType::Episode => session
+                        .now_playing_item
+                        .series_name
+                        .clone()
+                        .unwrap_or_else(|| session.now_playing_item.name.clone()),
+                    MediaType::Music => session
+                        .now_playing_item
+                        .album
+                        .clone()
+                        .unwrap_or_else(|| session.now_playing_item.name.clone()),
+                    MediaType::AudioBook => session
+                        .now_playing_item
+                        .album
+                        .clone()
+                        .unwrap_or_else(|| session.now_playing_item.name.clone()),
+                    _ => session.now_playing_item.name.clone(),
+                };
+
+                // Discord requires activity name to be between 2-128 characters
+                if name.len() > 128 {
+                    name = name.chars().take(128).collect();
+                } else if name.len() < 2 {
+                    name = "Jellyfin".to_string();
+                }
+
+                Some(name)
+            } else {
+                None
+            };
+
             let status_display_type = self.get_status_display_type();
 
             activity = activity
@@ -240,6 +274,10 @@ impl Client {
                 .details(&details)
                 .state(&state)
                 .status_display_type(status_display_type.into());
+
+            if let Some(name) = activity_name.as_ref() {
+                activity = activity.name(name);
+            }
 
             self.discord_ipc_client.set_activity(activity)?;
 
@@ -714,6 +752,16 @@ impl Client {
         }
     }
 
+    fn should_use_activity_name(&self) -> bool {
+        let session = self.session.as_ref().unwrap();
+        match session.now_playing_item.media_type {
+            MediaType::Episode => self.episodes_display_options.enable_activity_name.unwrap_or(false),
+            MediaType::Movie => self.movies_display_options.enable_activity_name.unwrap_or(false),
+            MediaType::Music => self.music_display_options.enable_activity_name.unwrap_or(false),
+            _ => false,
+        }
+    }
+
     fn get_image_text(&self) -> String {
         let session = self.session.as_ref().unwrap();
 
@@ -791,7 +839,7 @@ impl Client {
         self.blacklist.libraries = match self.fetch_blacklist() {
             Ok(blacklist) => BlacklistedLibraries::Initialized(blacklist, SystemTime::now()),
             Err(err) => {
-                warn!("Failed to intialize blacklist: {}", err);
+                warn!("Failed to initialize blacklist: {}", err);
                 BlacklistedLibraries::Uninitialized
             }
         }
@@ -808,6 +856,7 @@ struct DisplayOptions {
     separator: String,
     display: DisplayFormat,
     status_display_type: StatusType,
+    enable_activity_name: Option<bool>,
 }
 
 /// Represents the formatting details for `Display`.
@@ -996,12 +1045,15 @@ pub struct ClientBuilder {
     music_separator: String,
     music_display: DisplayFormat,
     music_status_display_type: StatusType,
+    music_enable_activity_name: bool,
     movies_separator: String,
     movies_display: DisplayFormat,
     movies_status_display_type: StatusType,
+    movies_enable_activity_name: bool,
     episodes_separator: String,
     episodes_display: DisplayFormat,
     episodes_status_display_type: StatusType,
+    episodes_enable_activity_name: bool,
     blacklist_media_types: Vec<MediaType>,
     blacklist_libraries: Vec<String>,
     show_paused: bool,
@@ -1149,6 +1201,11 @@ impl ClientBuilder {
         self
     }
 
+    pub fn music_enable_activity_name(&mut self, enable: bool) -> &mut Self {
+        self.music_enable_activity_name = enable;
+        self
+    }
+
     pub fn movies_separator<T: Into<String>>(&mut self, separator: T) -> &mut Self {
         self.movies_separator = separator.into();
         self
@@ -1164,6 +1221,11 @@ impl ClientBuilder {
         self
     }
 
+    pub fn movies_enable_activity_name(&mut self, enable: bool) -> &mut Self {
+        self.movies_enable_activity_name = enable;
+        self
+    }
+
     pub fn episodes_separator<T: Into<String>>(&mut self, separator: T) -> &mut Self {
         self.episodes_separator = separator.into();
         self
@@ -1176,6 +1238,11 @@ impl ClientBuilder {
 
     pub fn episodes_status_display_type(&mut self, status_type: StatusType) -> &mut Self {
         self.episodes_status_display_type = status_type;
+        self
+    }
+
+    pub fn episodes_enable_activity_name(&mut self, enable: bool) -> &mut Self {
+        self.episodes_enable_activity_name = enable;
         self
     }
 
@@ -1314,16 +1381,19 @@ impl ClientBuilder {
                 separator: self.music_separator,
                 display: self.music_display,
                 status_display_type: self.music_status_display_type,
+                enable_activity_name: Some(self.music_enable_activity_name),
             },
             movies_display_options: DisplayOptions {
                 separator: self.movies_separator,
                 display: self.movies_display,
                 status_display_type: self.movies_status_display_type,
+                enable_activity_name: Some(self.movies_enable_activity_name),
             },
             episodes_display_options: DisplayOptions {
                 separator: self.episodes_separator,
                 display: self.episodes_display,
                 status_display_type: self.episodes_status_display_type,
+                enable_activity_name: Some(self.episodes_enable_activity_name),
             },
             blacklist: Blacklist {
                 media_types: self.blacklist_media_types,

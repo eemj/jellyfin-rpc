@@ -120,6 +120,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         builder.music_status_display_type(status_display_type);
     }
 
+    if let Some(enable_activity_name) = conf.jellyfin.music.enable_activity_name {
+        debug!("Found config.jellyfin.music.enable_activity_name");
+        builder.music_enable_activity_name(enable_activity_name);
+    }
+
     if let Some(display) = conf.jellyfin.movies.display {
         debug!("Found config.jellyfin.movies.display");
         builder.movies_display(display);
@@ -133,6 +138,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(status_display_type) = conf.jellyfin.movies.status_display_type {
         debug!("Found config.jellyfin.movies.status_display_type");
         builder.movies_status_display_type(status_display_type);
+    }
+
+    if let Some(enable_activity_name) = conf.jellyfin.movies.enable_activity_name {
+        debug!("Found config.jellyfin.movies.enable_activity_name");
+        builder.movies_enable_activity_name(enable_activity_name);
     }
 
     if let Some(display) = conf.jellyfin.episodes.display {
@@ -155,6 +165,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(status_display_type) = conf.jellyfin.episodes.status_display_type {
         debug!("Found config.jellyfin.episodes.status_display_type");
         builder.episodes_status_display_type(status_display_type);
+    }
+
+    if let Some(enable_activity_name) = conf.jellyfin.episodes.enable_activity_name {
+        debug!("Found config.jellyfin.episodes.enable_activity_name");
+        builder.episodes_enable_activity_name(enable_activity_name);
     }
 
     if let Some(media_types) = conf.jellyfin.blacklist.media_types {

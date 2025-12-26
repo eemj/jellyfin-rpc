@@ -53,6 +53,8 @@ pub struct DisplayOptions {
     pub separator: Option<String>,
     /// Whether the to display the name, state, or details in the status title.
     pub status_display_type: Option<StatusType>,
+    /// Enable custom activity names (e.g., "Watching Emily in Paris" instead of "Watching Jellyfin")
+    pub enable_activity_name: Option<bool>,
 }
 
 /// Discord configuration
@@ -122,6 +124,7 @@ pub struct DisplayOptionsBuilder {
     pub display: Option<Display>,
     pub separator: Option<String>,
     pub status_display_type: Option<String>,
+    pub enable_activity_name: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -256,6 +259,7 @@ impl ConfigBuilder {
         let music_display;
         let music_separator;
         let music_status_display_type;
+        let music_enable_activity_name;
 
         if let Some(music) = self.jellyfin.music {
             if let Some(disp) = music.display {
@@ -273,15 +277,19 @@ impl ConfigBuilder {
             music_status_display_type = music
                 .status_display_type
                 .and_then(|x| StatusType::try_from(x).ok());
+            
+            music_enable_activity_name = music.enable_activity_name;
         } else {
             music_display = None;
             music_separator = None;
             music_status_display_type = None;
+            music_enable_activity_name = None;
         }
 
         let movie_display;
         let movie_separator;
         let movie_status_display_type;
+        let movie_enable_activity_name;
 
         if let Some(movies) = self.jellyfin.movies {
             if let Some(disp) = movies.display {
@@ -299,15 +307,19 @@ impl ConfigBuilder {
             movie_status_display_type = movies
                 .status_display_type
                 .and_then(|x| StatusType::try_from(x).ok());
+            
+            movie_enable_activity_name = movies.enable_activity_name;
         } else {
             movie_display = None;
             movie_separator = None;
             movie_status_display_type = None;
+            movie_enable_activity_name = None;
         }
 
         let episode_display;
         let episode_separator;
         let episode_status_display_type;
+        let episode_enable_activity_name;
 
         if let Some(episodes) = self.jellyfin.episodes {
             if let Some(disp) = episodes.display {
@@ -325,10 +337,13 @@ impl ConfigBuilder {
             episode_status_display_type = episodes
                 .status_display_type
                 .and_then(|x| StatusType::try_from(x).ok());
+            
+            episode_enable_activity_name = episodes.enable_activity_name;
         } else {
             episode_display = None;
             episode_separator = None;
             episode_status_display_type = None;
+            episode_enable_activity_name = None;
         }
 
         let media_types;
@@ -398,16 +413,19 @@ impl ConfigBuilder {
                     display: music_display,
                     separator: music_separator,
                     status_display_type: music_status_display_type,
+                    enable_activity_name: music_enable_activity_name,
                 },
                 movies: DisplayOptions {
                     display: movie_display,
                     separator: movie_separator,
                     status_display_type: movie_status_display_type,
+                    enable_activity_name: movie_enable_activity_name,
                 },
                 episodes: DisplayOptions {
                     display: episode_display,
                     separator: episode_separator,
                     status_display_type: episode_status_display_type,
+                    enable_activity_name: episode_enable_activity_name,
                 },
                 blacklist: Blacklist {
                     media_types,
